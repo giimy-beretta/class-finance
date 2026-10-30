@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="csrf" content="{{ csrf_token }}">
+  <meta name="description" content="ระบบการเงินห้อง 5/2 — ดูรายรับ-รายจ่าย ยอดค้างชำระ และหลักฐานการจ่ายเงิน">
+  <meta name="color-scheme" content="light dark">
+  <title>ระบบการเงินห้อง 5/2</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%232d6a55'/%3E%3Ctext x='16' y='22' font-size='18' text-anchor='middle' fill='white' font-family='sans-serif'%3E%E0%B8%BF%3C/text%3E%3C/svg%3E">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css', v='ui-20261030b') }}">
+</head>
+<body>
+
+<!-- ไอคอน (SVG sprite) ใช้ร่วมทั้งหน้า -->
+<svg class="sprite" aria-hidden="true" focusable="false">
+  <symbol id="i-print" viewBox="0 0 24 24"><path d="M6 9V3h12v6"/><rect x="6" y="14" width="12" height="7" rx="1"/><path d="M6 17H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/></symbol>
+  <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/></symbol>
+  <symbol id="i-lock" viewBox="0 0 24 24"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></symbol>
+  <symbol id="i-logout" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+  <symbol id="i-trash" viewBox="0 0 24 24"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M6 6l1 14h10l1-14"/></symbol>
+  <symbol id="i-clip" viewBox="0 0 24 24"><path d="M21 11.5 12.5 20a5 5 0 0 1-7-7L14 4.5a3.5 3.5 0 0 1 5 5L10.5 18a2 2 0 0 1-3-3L15 7.5"/></symbol>
+  <symbol id="i-file" viewBox="0 0 24 24"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6"/></symbol>
+  <symbol id="i-up" viewBox="0 0 24 24"><path d="M12 19V5"/><path d="m5 12 7-7 7 7"/></symbol>
+  <symbol id="i-down" viewBox="0 0 24 24"><path d="M12 5v14"/><path d="m19 12-7 7-7-7"/></symbol>
+  <symbol id="i-wallet" viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="14" rx="2"/><path d="M3 10h18"/><path d="M16 15h2"/></symbol>
+  <symbol id="i-users" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><path d="M16 4.5a3.5 3.5 0 0 1 0 7"/><path d="M18 14a6.5 6.5 0 0 1 3.5 6"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12 5 5 9-10"/></symbol>
+  <symbol id="i-alert" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 8v5"/><path d="M12 16h.01"/></symbol>
+  <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 4v7h-7"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></symbol>
+  <symbol id="i-list" viewBox="0 0 24 24"><path d="M9 6h11M9 12h11M9 18h11"/><path d="M4 6h.01M4 12h.01M4 18h.01"/></symbol>
+  <symbol id="i-chart" viewBox="0 0 24 24"><path d="M4 20V11"/><path d="M10 20V5"/><path d="M16 20v-8"/><path d="M22 20H2"/></symbol>
+  <symbol id="i-receipt" viewBox="0 0 24 24"><path d="M5 3v18l2-1.5L9 21l2-1.5L13 21l2-1.5L17 21l2-1.5V3l-2 1.5L15 3l-2 1.5L11 3 9 4.5 7 3z"/><path d="M9 9h6M9 13h6"/></symbol>
+</svg>
+
+<div class="app" id="top">
+  <a class="skip-link" href="#main">ข้ามไปยังเนื้อหา</a>
+
+  <header class="topbar">
+    <div class="brand">
+      <span class="logo" aria-hidden="true">฿</span>
+      <div>
+        <h1>ระบบการเงินห้อง 5/2</h1>
+        <p class="sub">นักเรียน 21 คน · ทุกคนดูข้อมูลได้ · แก้ไขได้เฉพาะผู้เก็บเงิน 3 คน</p>
+      </div>
+    </div>
+    <div class="toolbar">
+      <button class="btn ghost" type="button" id="printBtn">
+        <svg class="ic" aria-hidden="true"><use href="#i-print"/></svg><span>พิมพ์รายงาน</span>
+      </button>
+      <button class="btn ghost" type="button" id="exportBtn">
+        <svg class="ic" aria-hidden="true"><use href="#i-download"/></svg><span>ส่งออก CSV</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- ผู้เก็บเงิน: ฟอร์มล็อกอิน (ซ่อนเมื่อล็อกอินแล้ว) -->
+  <section class="card auth" aria-labelledby="authTitle">
+    <form id="loginForm" class="auth-form" autocomplete="on">
+      <div class="auth-head">
+        <svg class="ic ic-lg" aria-hidden="true"><use href="#i-lock"/></svg>
+        <div>
+          <h2 id="authTitle">โหมดผู้เก็บเงิน</h2>
+          <p class="hint">ล็อกอินเพื่อเพิ่ม แก้ไข เรียกเก็บ รับเงิน หรือแนบหลักฐาน</p>
+        </div>
+      </div>
+      <div class="auth-fields">
+        <label class="field">
+          <span class="sr-only">รหัสผู้เก็บเงิน</span>
+          <input type="password" id="tokenIn" name="token" placeholder="รหัสผู้เก็บเงิน" autocomplete="current-password" required>
+        </label>
+        <label class="field">
+          <span class="sr-only">อีเมล (ไม่บังคับ)</span>
+          <input type="email" id="emailIn" name="email" placeholder="อีเมล (ไม่บังคับ บันทึกใน Log)" autocomplete="email">
+        </label>
+        <button class="btn primary" type="submit" id="loginBtn">เข้าสู่ระบบ</button>
+      </div>
+    </form>
+    <div class="who" id="whoBox" hidden>
+      <p><span class="status-dot" aria-hidden="true"></span> เข้าสู่ระบบเป็น <strong id="whoName"></strong> · แก้ไขได้ทุกส่วน</p>
+      <button class="btn ghost" type="button" id="logoutBtn">
+        <svg class="ic" aria-hidden="true"><use href="#i-logout"/></svg><span>ออกจากระบบ</span>
+      </button>
+    </div>
+  </section>
+
+  <div class="alert" id="loadError" role="alert" hidden>
+    <span id="loadErrorText"></span>
+    <button class="btn ghost small" type="button" data-act="retry">ลองใหม่</button>
+  </div>
+
+  <nav class="tabs" role="tablist" aria-label="เมนูหลัก">
+    <button role="tab" type="button" id="tab-overview" data-tab="overview" aria-controls="panel-overview" aria-selected="true">
+      <svg class="ic" aria-hidden="true"><use href="#i-wallet"/></svg><span>ภาพรวม</span></button>
+    <button role="tab" type="button" id="tab-history" data-tab="history" aria-controls="panel-history" aria-selected="false" tabindex="-1">
+      <svg class="ic" aria-hidden="true"><use href="#i-list"/></svg><span>ประวัติรายการ</span></button>
+    <button role="tab" type="button" id="tab-students" data-tab="students" aria-controls="panel-students" aria-selected="false" tabindex="-1">
+      <svg class="ic" aria-hidden="true"><use href="#i-users"/></svg><span>นักเรียน</span></button>
+    <button role="tab" type="button" id="tab-reports" data-tab="reports" aria-controls="panel-reports" aria-selected="false" tabindex="-1">
+      <svg class="ic" aria-hidden="true"><use href="#i-chart"/></svg><span>รายงาน</span></button>
+  </nav>
+
+  <main id="main">
+
+    <!-- ===== ภาพรวม ===== -->
+    <section class="panel" role="tabpanel" id="panel-overview" aria-labelledby="tab-overview" data-panel="overview">
+      <div class="kpis">
+        <article class="kpi kpi-in">
+          <p class="kpi-label">รายรับรวม</p>
+          <p class="kpi-value pos" id="totalIn">—</p>
+          <p class="kpi-meta" id="countIn">&nbsp;</p>
+        </article>
+        <article class="kpi kpi-out">
+          <p class="kpi-label">รายจ่ายรวม</p>
+          <p class="kpi-value neg" id="totalOut">—</p>
+          <p class="kpi-meta" id="countOut">&nbsp;</p>
+        </article>
+        <article class="kpi kpi-balance">
+          <p class="kpi-label">คงเหลือในกองกลาง</p>
+          <p class="kpi-value" id="balance">—</p>
+          <p class="kpi-meta">รายรับ − รายจ่าย</p>
+        </article>
+        <article class="kpi kpi-debt">
+          <p class="kpi-label">ยอดค้างชำระรวม</p>
+          <p class="kpi-value" id="totalDebt">—</p>
+          <p class="kpi-meta" id="debtMeta">&nbsp;</p>
+        </article>
+      </div>
+
+      <div class="grid-2">
+        <section class="card">
+          <h2>สรุปตามหมวดหมู่</h2>
+          <div class="cat-cols">
+            <div>
+              <h3 class="pos-title">รายรับ</h3>
+              <div id="catIn" class="bars"></div>
+            </div>
+            <div>
+              <h3 class="neg-title">รายจ่าย</h3>
+              <div id="catOut" class="bars"></div>
+            </div>
+          </div>
+        </section>
+        <section class="card">
+          <h2>รายการล่าสุด</h2>
+          <ul class="feed" id="latestList"></ul>
+        </section>
+      </div>
+    </section>
+
+    <!-- ===== ประวัติรายการ ===== -->
+    <section class="panel" role="tabpanel" id="panel-history" aria-labelledby="tab-history" data-panel="history" hidden>
+
+      <!-- ฟอร์มเพิ่มรายการ (ผู้เก็บเงิน) -->
+      <section class="card add-card" id="addCard" aria-labelledby="addTitle" hidden>
+        <h2 id="addTitle">
+          <svg class="ic" aria-hidden="true"><use href="#i-plus"/></svg> เพิ่มรายการรายรับ / รายจ่าย</h2>
+        <form id="txForm" class="form-grid">
+          <label class="field">
+            <span>ประเภท</span>
+            <select id="fType" name="type">
+              <option value="in">รายรับ</option>
+              <option value="out">รายจ่าย</option>
+            </select>
+          </label>
+          <label class="field">
+            <span>วันที่</span>
+            <input type="date" id="fDate" name="d" required>
+          </label>
+          <label class="field field-wide">
+            <span>รายการ</span>
+            <input type="text" id="fItem" name="item" maxlength="200" placeholder="เช่น ค่าวัสดุทำบอร์ด" required>
+          </label>
+          <label class="field">
+            <span>หมวดหมู่</span>
+            <input type="text" id="fCat" name="cat" maxlength="100" list="catList" placeholder="เว้นว่างได้">
+          </label>
+          <label class="field">
+            <span>จำนวนเงิน (บาท)</span>
+            <input type="number" id="fAmt" name="amt" min="0.01" max="1000000" step="0.01" inputmode="decimal" placeholder="0.00" required>
+          </label>
+          <label class="field field-wide">
+            <span>หมายเหตุ <em>(ไม่บังคับ)</em></span>
+            <input type="text" id="fNote" name="note" maxlength="300">
+          </label>
+          <div class="form-actions">
+            <button class="btn primary" type="submit" id="addBtn">
+              <svg class="ic" aria-hidden="true"><use href="#i-check"/></svg><span>บันทึกรายการ</span>
+            </button>
+          </div>
+        </form>
+        <datalist id="catList"></datalist>
+      </section>
+
+      <!-- ตัวกรอง -->
+      <div class="card filters">
+        <label class="search">
+          <svg class="ic" aria-hidden="true"><use href="#i-search"/></svg>
+          <span class="sr-only">ค้นหารายการ</span>
+          <input type="search" id="search" placeholder="ค้นหาจากชื่อรายการหรือหมวดหมู่" autocomplete="off">
+        </label>
+        <label class="field-inline">
+          <span class="sr-only">กรองตามหมวดหมู่</span>
+          <select id="catFilter"><option value="">ทุกหมวดหมู่</option></select>
+        </label>
+        <label class="field-inline">
+          <span class="sr-only">ตั้งแต่วันที่</span>
+          <input type="date" id="dateFrom" title="ตั้งแต่วันที่">
+        </label>
+        <label class="field-inline">
+          <span class="sr-only">ถึงวันที่</span>
+          <input type="date" id="dateTo" title="ถึงวันที่">
+        </label>
+        <div class="seg" role="group" aria-label="ประเภทรายการ" id="typeToggle">
+          <button type="button" data-type="all" aria-pressed="true">ทั้งหมด</button>
+          <button type="button" data-type="in" aria-pressed="false">รายรับ</button>
+          <button type="button" data-type="out" aria-pressed="false">รายจ่าย</button>
+        </div>
+        <button class="btn ghost small" type="button" id="clearFilters">ล้างตัวกรอง</button>
+      </div>
+      <p class="count" id="resultCount" aria-live="polite"></p>
+
+      <div class="card flush">
+        <div class="table-scroll">
+          <table class="data" id="histTable">
+            <thead>
+              <tr>
+                <th scope="col"><button class="sort" type="button" data-sort="d">วันที่</button></th>
+                <th scope="col">รายการ</th>
+                <th scope="col">หมวดหมู่</th>
+                <th scope="col" class="num"><button class="sort" type="button" data-sort="amt">จำนวนเงิน</button></th>
+                <th scope="col">หลักฐาน</th>
+                <th scope="col" class="admin-only" hidden><span class="sr-only">จัดการ</span></th>
+              </tr>
+            </thead>
+            <tbody id="rows"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <input type="file" id="evFile" hidden accept=".jpg,.jpeg,.png,.webp,.gif,.pdf,image/jpeg,image/png,image/webp,image/gif,application/pdf">
+
+      <details class="card disclosure">
+        <summary>บันทึกการแก้ไข (Log)</summary>
+        <div class="table-scroll">
+          <table class="data">
+            <thead>
+              <tr>
+                <th scope="col">เวลา</th>
+                <th scope="col">ผู้แก้ไข</th>
+                <th scope="col">การกระทำ</th>
+                <th scope="col">รายละเอียด</th>
+                <th scope="col" class="admin-only" hidden>อีเมลที่กรอก</th>
+              </tr>
+            </thead>
+            <tbody id="auditRows"></tbody>
+          </table>
+        </div>
+      </details>
+
+      <p class="note">แนบหลักฐานได้เฉพาะรายจ่าย: JPG, PNG, WEBP, GIF หรือ PDF ไม่เกิน 5 MB ต่อไฟล์ สูงสุด 5 ไฟล์ต่อรายการ · หลักฐานทุกไฟล์เปิดดูได้ที่หน้านี้ · การลบจะซ่อนไฟล์ แต่ยังเก็บไว้ในระบบ</p>
+    </section>
+
+    <!-- ===== นักเรียน ===== -->
+    <section class="panel" role="tabpanel" id="panel-students" aria-labelledby="tab-students" data-panel="students" hidden>
+
+      <section class="card charge-card" id="chargeCard" aria-labelledby="chargeTitle" hidden>
+        <form id="chargeForm" class="charge-form">
+          <div class="charge-head">
+            <h2 id="chargeTitle">เรียกเก็บรายสัปดาห์ (ทุกคน)</h2>
+            <p class="hint">เรียกเก็บทุกคนคนละเท่ากัน ยอดค้างจะทบไปเรื่อย ๆ ไม่มีการรีเซ็ต</p>
+          </div>
+          <label class="field">
+            <span>วันที่</span>
+            <input type="date" id="cDate" name="d" required>
+          </label>
+          <label class="field">
+            <span>จำนวนต่อคน (บาท)</span>
+            <input type="number" id="cAmt" name="amt" min="0.01" max="1000000" step="0.01" value="20" inputmode="decimal" required>
+          </label>
+          <button class="btn primary" type="submit" id="chargeBtn">เรียกเก็บทุกคน</button>
+        </form>
+      </section>
+
+      <p class="summary" id="stuSummary"></p>
+
+      <div class="card flush">
+        <div class="table-scroll">
+          <table class="data" id="stuTable">
+            <thead>
+              <tr>
+                <th scope="col" class="w-no">เลขที่</th>
+                <th scope="col">ชื่อ-สกุล</th>
+                <th scope="col">สถานะ</th>
+                <th scope="col" class="admin-only" hidden>รับเงิน</th>
+              </tr>
+            </thead>
+            <tbody id="studentRows"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <details class="card disclosure">
+        <summary>ประวัติการเรียกเก็บ / รับเงิน</summary>
+        <div class="table-scroll">
+          <table class="data">
+            <thead>
+              <tr>
+                <th scope="col">วันที่</th>
+                <th scope="col">รายการ</th>
+                <th scope="col" class="num">จำนวน</th>
+                <th scope="col">บันทึกโดย</th>
+                <th scope="col" class="admin-only" hidden><span class="sr-only">จัดการ</span></th>
+              </tr>
+            </thead>
+            <tbody id="stuHist"></tbody>
+          </table>
+        </div>
+      </details>
+
+      <p class="note">เมื่อกด "รับเงิน" ยอดค้างของคนนั้นจะลดลง และระบบบันทึกเป็น <strong>รายรับ</strong> (หมวด "รายได้รายอาทิตย์") พร้อมเขียนลงประวัติและ Log ให้อัตโนมัติ · ถ้ากรอกผิด ลบได้ที่แท็บนี้หรือที่ "ประวัติรายการ" รายรับที่ผูกกันจะถูกยกเลิกให้ด้วย</p>
+    </section>
+
+    <!-- ===== รายงาน ===== -->
+    <section class="panel" role="tabpanel" id="panel-reports" aria-labelledby="tab-reports" data-panel="reports" hidden>
+      <div class="card flush">
+        <div class="table-scroll">
+          <table class="data">
+            <thead>
+              <tr>
+                <th scope="col">เดือน</th>
+                <th scope="col" class="num">รายรับ</th>
+                <th scope="col" class="num">รายจ่าย</th>
+                <th scope="col" class="num">สุทธิ</th>
+                <th scope="col" class="num">คงเหลือสะสม</th>
+              </tr>
+            </thead>
+            <tbody id="monthRows"></tbody>
+          </table>
+        </div>
+      </div>
+      <p class="note">ยอดยกมาต้นงวด (Opening Balance) = ฿0.00 (ยืนยันแล้ว)</p>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <p>ข้อมูลเก็บที่เซิร์ฟเวอร์ · อัปเดตอัตโนมัติทุก 30 วินาที · <a href="#top">กลับขึ้นด้านบน</a></p>
+  </footer>
+</div>
+
+<!-- กล่องแจ้งผลการรับเงิน -->
+<div class="modal" id="payDialog" hidden>
+  <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="payDlgTitle">
+    <div class="modal-icon" aria-hidden="true"><svg class="ic ic-xl"><use href="#i-check"/></svg></div>
+    <h2 id="payDlgTitle">รับเงินสำเร็จ</h2>
+    <dl class="kv" id="payDlgBody"></dl>
+    <p class="hint">บันทึกเป็นรายรับ ลงประวัติ และ Log เรียบร้อยแล้ว</p>
+    <button class="btn primary wide" type="button" id="payDlgClose">ปิด</button>
+  </div>
+</div>
+
+<!-- แถบข้อความแจ้งผล -->
+<div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+
+<script src="{{ url_for('static', filename='script.js', v='ui-20261030b') }}"></script>
+</body>
+</html>

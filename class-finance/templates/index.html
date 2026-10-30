@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<!-- ระบบการเงินห้อง 5/2: หน้าเว็บ (โครงสร้าง) — แท็บ "ประวัติรายการ" มีส่วนแก้ไขข้อมูลสำหรับผู้เก็บเงิน + บันทึก Log -->
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="csrf" content="{{ csrf_token }}"> <!-- token กัน CSRF ที่ Flask แจกให้ -->
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>ระบบการเงินห้อง 5/2</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <h1>💰 ระบบการเงินห้อง 5/2</h1>
+      <p>นักเรียนทั้งหมด 21 คน · หน้าแสดงผลสาธารณะ (ดูอย่างเดียว) · สามารถแก้ไขได้ 3 คนที่เป็นคนเก็บเงินเท่านั้น!</p>
+    </div>
+    <div class="btnrow">
+      <button class="ghost" onclick="window.print()">🖨️ พิมพ์รายงาน</button>
+      <button class="ghost" id="exportBtn">⬇️ ส่งออก CSV</button>
+    </div>
+  </header>
+
+  <!-- [เพิ่มใหม่] ล็อกอินผู้เก็บเงิน (ใช้ร่วมทุกแท็บ) + ข้อความสถานะ -->
+  <div class="adminbar" id="authBar">
+    <div id="loginBox" hidden>🔒 ผู้เก็บเงิน: <input type="password" id="tokenIn" placeholder="รหัสผู้เก็บเงิน" autocomplete="off"> <input type="email" id="emailIn" placeholder="อีเมล (บันทึกใน Log)"> <button class="ghost" id="loginBtn">เข้าสู่ระบบ</button></div>
+    <div id="whoBox" hidden>✅ เข้าสู่ระบบเป็น <strong id="whoName"></strong> <button class="ghost" id="logoutBtn">ออกจากระบบ</button></div>
+    <div id="msg" class="note"></div>
+  </div>
+  <nav class="tabs">
+    <button data-tab="overview" class="active">ภาพรวม</button>
+    <button data-tab="history">ประวัติรายการ</button>
+    <button data-tab="students">นักเรียน</button>
+    <button data-tab="reports">รายงาน</button>
+  </nav>
+
+  <section class="panel active" data-panel="overview">
+    <div class="cards">
+      <div class="card income"><div class="label">รายรับรวม</div><div class="value" id="totalIn">-</div></div>
+      <div class="card expense"><div class="label">รายจ่ายรวม</div><div class="value" id="totalOut">-</div></div>
+      <div class="card balance"><div class="label">คงเหลือ</div><div class="value" id="balance">-</div></div>
+      <div class="card"><div class="label">รายการรายรับ</div><div class="value" id="countIn">-</div></div>
+      <div class="card"><div class="label">รายการรายจ่าย</div><div class="value" id="countOut">-</div></div>
+    </div>
+    <div class="block">
+      <h2>สรุปตามหมวดหมู่</h2>
+      <div class="catgrid">
+        <div class="catbox in"><strong>รายรับ</strong><div id="catIn" style="margin-top:8px;"></div></div>
+        <div class="catbox out"><strong>รายจ่าย</strong><div id="catOut" style="margin-top:8px;"></div></div>
+      </div>
+    </div>
+    <div class="block">
+      <h2>ธุรกรรมล้าสุด</h2>
+      <div class="tablewrap">
+        <table><tbody id="latestRows"></tbody></table>
+      </div>
+    </div>
+  </section>
+
+  <section class="panel" data-panel="history">
+    <!-- [เพิ่มใหม่] ส่วนผู้เก็บเงิน: ล็อกอินด้วยรหัส + ฟอร์มเพิ่มรายการ -->
+    <div class="adminbar" id="histBar" hidden>
+      <div id="adminForm" class="controls" hidden>
+        <select id="fType"><option value="in">รายรับ</option><option value="out">รายจ่าย</option></select>
+        <input type="date" id="fDate"> <input type="search" id="fItem" placeholder="รายการ"> <input type="search" id="fCat" placeholder="หมวดหมู่">
+        <input type="number" id="fAmt" min="0" step="0.01" placeholder="จำนวนเงิน"> <input type="search" id="fNote" placeholder="หมายเหตุ">
+        <button class="ghost" id="addBtn">＋ บันทึก</button>
+      </div>
+    </div>
+    <div class="controls">
+      <input type="search" id="search" placeholder="ค้นหารายการ...">
+      <select id="catFilter"><option value="">ทุกหมวดหมู่</option></select>
+      <input type="date" id="dateFrom" title="ตั้งแต่วันที่">
+      <input type="date" id="dateTo" title="ถึงวันที่">
+      <div class="toggle" id="typeToggle">
+        <button data-type="all" class="active">ทั้งหมด</button>
+        <button data-type="in">รายรับ</button>
+        <button data-type="out">รายจ่าย</button>
+      </div>
+    </div>
+    <div class="tablewrap">
+      <table>
+        <thead><tr>
+          <th class="sortable" data-k="d">วันที่ ⇅</th><th>รายการ</th><th>หมวดหมู่</th>
+          <th class="sortable" data-k="amt">จำนวนเงิน ⇅</th><th>หลักฐาน</th><th id="actTh" hidden></th>
+        </tr></thead>
+        <tbody id="rows"></tbody>
+      </table>
+    </div>
+    <!-- [เพิ่มใหม่] บันทึกการแก้ไข (Log) ดูได้ทุกคน -->
+    <details class="block"><summary><strong>📜 บันทึกการแก้ไข (Log)</strong></summary>
+      <div class="tablewrap audit"><table>
+        <thead><tr><th>เวลา</th><th>ผู้แก้ไข</th><th>การกระทำ</th><th>รายละเอียด</th><th id="audEmailTh" hidden>บัญชีผู้ใช้</th></tr></thead>
+        <tbody id="auditRows"></tbody>
+      </table></div>
+    </details>
+    <div class="note">* คอลัมน์ "หลักฐาน" แสดงสถานะเท่านั้น (ยังไม่มีระบบอัปโหลดไฟล์จริง) </div>
+  </section>
+
+  <section class="panel" data-panel="students">
+    <h2>รายชื่อนักเรียนห้อง 5/2 (21 คน)</h2>
+    <!-- [เพิ่มใหม่] เรียกเก็บเงินรายสัปดาห์ (เฉพาะผู้เก็บเงิน) -->
+    <div class="adminbar" id="chargeBar" hidden>
+      <div class="controls"><strong>เรียกเก็บเงินรายสัปดาห์ (ทุกคน)</strong>
+        <input type="date" id="cDate"> <input type="number" id="cAmt" min="0" step="0.01" value="20"> บาท
+        <button class="ghost" id="chargeBtn">เรียกเก็บทุกคน</button></div>
+    </div>
+    <div class="note" id="stuSummary"></div>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th style="text-align:left">เลขที่</th><th style="text-align:left">ชื่อ-สกุล</th><th style="text-align:left">ยอดค้างชำระ</th><th id="stuActTh" hidden style="text-align:left">รับเงิน</th></tr></thead>
+        <tbody id="studentRows"></tbody>
+      </table>
+    </div>
+    <!-- [เพิ่มใหม่] ประวัติการเรียกเก็บ/รับเงิน (ผู้เก็บเงินลบรายการที่กรอกผิดได้ทีละรายการ) -->
+    <details class="block"><summary><strong>🧾 ประวัติการเรียกเก็บ/รับเงิน</strong></summary>
+      <div class="tablewrap"><table><tbody id="stuHist"></tbody></table></div>
+    </details>
+    <div class="note">เมื่อกด "รับเงิน" ยอดค้างของคนนั้นจะลดลง และระบบบันทึกเป็น <strong>รายรับ</strong> (หมวด "รายได้รายอาทิตย์") พร้อมเขียนลงประวัติและ Log ให้อัตโนมัติ · ถ้ากรอกผิด ให้ลบที่ "ประวัติการเรียกเก็บ/รับเงิน" รายรับที่ผูกกันจะถูกยกเลิกให้ด้วย</div>
+  </section>
+
+  <section class="panel" data-panel="reports">
+    <h2>รายงานรายเดือน</h2>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>เดือน</th><th>รายรับ</th><th>รายจ่าย</th><th>สุทธิ</th><th>คงเหลือสะสม</th></tr></thead>
+        <tbody id="monthRows"></tbody>
+      </table>
+    </div>
+    <div class="note">ยอดยกมาต้นงวด (Opening Balance) = ฿0.00 (ยืนยันแล้ว)</div>
+  </section>
+
+  <footer>ระบบการเงินห้อง 5/2 · ข้อมูลเก็บที่เซิร์ฟเวอร์ และอัปเดตอัตโนมัติทุก 30 วินาที</footer>
+</div>
+<script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>

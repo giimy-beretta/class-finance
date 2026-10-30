@@ -1,0 +1,21 @@
+# Render Blueprint: Dashboard > New > Blueprint > เลือก repo นี้
+# ต้องใช้แพ็กเกจที่มี Disk (ฐานข้อมูล SQLite เก็บเป็นไฟล์ ถ้าไม่มี disk ข้อมูลจะหายทุกครั้งที่ deploy)
+services:
+  - type: web
+    name: class-finance
+    runtime: docker
+    plan: starter
+    healthCheckPath: /healthz
+    disk:
+      name: data
+      mountPath: /data
+      sizeGB: 1
+    envVars:
+      - key: SECRET_KEY
+        generateValue: true
+      - key: COLLECTOR_TOKENS
+        sync: false          # กรอกเองใน Dashboard เช่น ฉัตร=รหัสยาว8ตัวขึ้นไป,มีมี่=...,เพียว=...
+      - key: SESSION_COOKIE_SECURE
+        value: "1"
+      - key: TRUSTED_PROXIES
+        value: "1"

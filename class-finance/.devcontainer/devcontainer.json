@@ -1,0 +1,8 @@
+{
+  "name": "class-finance (Codespaces)",
+  "image": "mcr.microsoft.com/devcontainers/python:3.12",
+  "postCreateCommand": "pip install -r requirements.txt -r requirements-dev.txt && ([ -f .env ] || printf 'SECRET_KEY=%s\\nCOLLECTOR_TOKENS=ฉัตร=change-me-1,มีมี่=change-me-2,เพียว=change-me-3\\n' $(python -c 'import secrets;print(secrets.token_hex(32))') > .env)",
+  "forwardPorts": [5000],
+  "portsAttributes": {"5000": {"label": "ระบบการเงินห้อง 5/2", "onAutoForward": "openBrowser"}},
+  "customizations": {"vscode": {"extensions": ["ms-python.python"]}}
+}
